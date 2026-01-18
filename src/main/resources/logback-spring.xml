@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Logback configuration file - defines how application logs are handled, formatted, and stored -->
+<configuration>
+    <!-- Console Appender - outputs log messages directly to the terminal/command line -->
+    <!-- Useful for development and immediate feedback during runtime -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- Encoder defines how log messages are formatted for console output -->
+        <encoder>
+            <!-- Pattern breakdown: 
+                 %d{yyyy-MM-dd HH:mm:ss.SSS} = timestamp with milliseconds
+                 [%thread] = thread name in brackets
+                 %-5level = log level left-padded to 5 characters (DEBUG, INFO, WARN, ERROR)
+                 %logger{36} = logger name (truncated to 36 chars)
+                 - %msg%n = actual log message followed by newline -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender for Application Logs - writes logs to files with automatic rotation -->
+    <!-- This is crucial for production environments where console output isn't persistent -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- Base log file location - all current logs go here until rolled over -->
+        <file>logs/application.log</file>
+        
+        <!-- Rolling policy - automatically manages log file lifecycle -->
+        <!-- SizeAndTimeBasedRollingPolicy combines size limits AND time-based rotation -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Pattern for archived log files: application.YYYY-MM-DD.index.log -->
+            <!-- %d{yyyy-MM-dd} = daily rotation, %i = index for multiple files per day -->
+            <fileNamePattern>logs/application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            
+            <!-- Maximum size per individual log file before rolling occurs -->
+            <!-- Prevents single massive log files that are hard to manage -->
+            <maxFileSize>10MB</maxFileSize>
+            
+            <!-- How many days of archived logs to keep before deletion -->
+            <!-- Balances disk space usage with audit/history requirements -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        
+        <!-- Encoder for file output - same format as console for consistency -->
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender for Security Logs - separate file for authentication/security events -->
+    <!-- Critical for compliance, auditing, and security incident investigation -->
+    <appender name="SECURITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- Dedicated security log file - makes it easy to monitor suspicious activity -->
+        <file>logs/security.log</file>
+        
+        <!-- Same rolling policy as application logs but for security events -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Daily archives for security events with indexing -->
+            <fileNamePattern>logs/security.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <!-- Retain security logs longer for compliance reasons -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        
+        <!-- Consistent formatting with other log files for easier analysis -->
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender for Audit Logs - simplified format for business/user activity tracking -->
+    <!-- Used for compliance reporting and tracking who did what and when -->
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- Dedicated audit trail file - records user actions and business events -->
+        <file>logs/audit.log</file>
+        
+        <!-- Rolling policy optimized for long-term audit retention -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Daily audit file archives with higher retention -->
+            <fileNamePattern>logs/audit.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <!-- Extended retention period for legal/compliance purposes -->
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        
+        <!-- Simplified audit format - focuses on what happened rather than technical details -->
+        <!-- Just timestamp and message, since audit logs are typically human-readable event descriptions -->
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Async Appenders for Better Performance - wraps regular appenders to improve performance -->
+    <!-- Asynchronous logging prevents slow I/O operations from blocking application threads -->
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- Reference to the actual console appender that does the real work -->
+        <appender-ref ref="CONSOLE" />
+        
+        <!-- Size of the internal queue that buffers log events before processing -->
+        <!-- Larger queue handles burst logging but uses more memory -->
+        <queueSize>512</queueSize>
+        
+        <!-- Discard threshold - 0 means never discard logs even under heavy load -->
+        <!-- Critical for security and audit logs where completeness matters -->
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Async wrapper for main application file logging -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Async wrapper for security event logging -->
+    <appender name="ASYNC_SECURITY" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="SECURITY_FILE" />
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Async wrapper for audit trail logging -->
+    <appender name="ASYNC_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="AUDIT_FILE" />
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Logger for Security Events - captures authentication, authorization, and security-related activities -->
+    <!-- Level INFO means log security events like login attempts, permission checks, token validation -->
+    <logger name="com.tailormade.couture.tailor_made_auth_service.security" level="INFO" additivity="false">
+        <!-- Send security events to dedicated security log file -->
+        <appender-ref ref="ASYNC_SECURITY" />
+        <!-- Also show in console for immediate visibility during development/testing -->
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </logger>
+
+    <!-- Logger for Audit Events - tracks user business activities and system changes -->
+    <!-- Captures who did what, when, and what the outcome was for compliance purposes -->
+    <logger name="com.tailormade.couture.tailor_made_auth_service.audit" level="INFO" additivity="false">
+        <!-- Write audit events to dedicated audit trail file -->
+        <appender-ref ref="ASYNC_AUDIT" />
+        <!-- Show in console for development visibility -->
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </logger>
+
+    <!-- Logger for Controllers - REST API endpoint activities and request handling -->
+    <!-- Tracks incoming HTTP requests, API calls, and their outcomes -->
+    <logger name="com.tailormade.couture.tailor_made_auth_service.controller" level="INFO" additivity="false">
+        <!-- Write controller logs to main application log file -->
+        <appender-ref ref="ASYNC_FILE" />
+        <!-- Show in console for API debugging -->
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </logger>
+
+    <!-- Logger for Services - business logic layer operations and core functionality -->
+    <!-- Captures user management, data processing, and business rule execution -->
+    <logger name="com.tailormade.couture.tailor_made_auth_service.service" level="INFO" additivity="false">
+        <!-- Write service logs to main application log file -->
+        <appender-ref ref="ASYNC_FILE" />
+        <!-- Show in console for business logic debugging -->
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </logger>
+
+    <!-- Logger for Utilities - helper classes like JWT token handling and crypto utilities -->
+    <!-- Set to DEBUG level because security utilities often need detailed troubleshooting -->
+    <logger name="com.tailormade.couture.tailor_made_auth_service.util" level="DEBUG" additivity="false">
+        <!-- Write utility logs to main application log file -->
+        <appender-ref ref="ASYNC_FILE" />
+        <!-- Show in console for detailed debugging of token issues -->
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </logger>
+
+    <!-- Root Logger - fallback for any logging that doesn't match specific loggers above -->
+    <!-- Acts as default configuration for third-party libraries and framework components -->
+    <root level="INFO">
+        <!-- Default destination for unmatched log events - both file and console -->
+        <appender-ref ref="ASYNC_FILE" />
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </root>
+
+    <!-- Profile-specific configurations - different logging behavior based on environment -->
+    
+    <!-- Development profile - maximum visibility for debugging and development -->
+    <springProfile name="dev">
+        <!-- Root logger set to DEBUG level to show ALL framework/library logging -->
+        <root level="DEBUG">
+            <!-- Console-only output for rapid development feedback -->
+            <appender-ref ref="ASYNC_CONSOLE" />
+        </root>
+        
+        <!-- Our application classes get extra detailed logging in development -->
+        <logger name="com.tailormade.couture.tailor_made_auth_service" level="DEBUG" />
+    </springProfile>
+
+    <!-- Production profile - minimal logging for performance and security -->
+    <springProfile name="prod">
+        <!-- Root logger restricted to WARN level to reduce noise and improve performance -->
+        <!-- Only warnings and errors from frameworks/libraries get logged -->
+        <root level="WARN">
+            <!-- File-only output for production environments -->
+            <appender-ref ref="ASYNC_FILE" />
+        </root>
+        
+        <!-- Our application maintains INFO level for operational visibility -->
+        <!-- Still captures important business events without excessive detail -->
+        <logger name="com.tailormade.couture.tailor_made_auth_service" level="INFO" />
+    </springProfile>
+</configuration>
+<!-- End of Logback configuration -->

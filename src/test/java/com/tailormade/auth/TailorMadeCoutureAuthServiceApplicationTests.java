@@ -1,4 +1,4 @@
-package com.tailormade.auth_service;
+package com.tailormade.auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

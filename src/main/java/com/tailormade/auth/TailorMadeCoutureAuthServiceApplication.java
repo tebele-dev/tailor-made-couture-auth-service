@@ -1,4 +1,4 @@
-package com.tailormade.auth_service;
+package com.tailormade.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
