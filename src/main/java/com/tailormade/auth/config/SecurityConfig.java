@@ -21,10 +21,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-
 import com.tailormade.auth.service.CustomUserDetailsService;
-
-
 
 @Configuration
 @EnableWebSecurity
@@ -36,7 +33,8 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService userDetailsService;
     
-
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -62,10 +60,10 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS);
             })
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout").permitAll()
                 .anyRequest().authenticated()
             )
-
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .userDetailsService(userDetailsService);
         
         logger.info("Security filter chain configured successfully");

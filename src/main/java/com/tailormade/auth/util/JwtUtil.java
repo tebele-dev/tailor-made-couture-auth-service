@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import javax.crypto.SecretKey;
 
 import org.slf4j.Logger;
@@ -144,7 +142,7 @@ public class JwtUtil {
                     .setClaims(claims)
                     .setSubject(userDetails.getUsername())
                     .setIssuedAt(new Date(System.currentTimeMillis()))
-                    .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7)) // 7 days
+                    .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7))
                     .signWith(getSignInKey())
                     .compact();
             

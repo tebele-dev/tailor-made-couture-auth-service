@@ -16,60 +16,60 @@ class TokenBlacklistTest {
 
     @Test
     void blacklistToken_defaultDuration_tokenIsBlacklisted() {
-        // Given
+
         String token = "sample-jwt-token";
 
-        // When
+
         tokenBlacklist.blacklistToken(token);
 
-        // Then
+
         assertThat(tokenBlacklist.isTokenBlacklisted(token)).isTrue();
     }
 
     @Test
     void blacklistToken_customDuration_tokenIsBlacklisted() {
-        // Given
-        String token = "sample-jwt-token";
-        long duration = 3600; // 1 hour
 
-        // When
+        String token = "sample-jwt-token";
+        long duration = 3600;
+
+
         tokenBlacklist.blacklistToken(token, duration);
 
-        // Then
+
         assertThat(tokenBlacklist.isTokenBlacklisted(token)).isTrue();
     }
 
     @Test
     void isTokenBlacklisted_nonExistentToken_returnsFalse() {
-        // When
+
         boolean blacklisted = tokenBlacklist.isTokenBlacklisted("non-existent-token");
 
-        // Then
+
         assertThat(blacklisted).isFalse();
     }
 
     @Test
     void isTokenBlacklisted_afterExpiry_returnsFalse() throws InterruptedException {
         String token = "expiring-token";
-        long shortDuration = 1; // 1 second
+        long shortDuration = 1;
 
         tokenBlacklist.blacklistToken(token, shortDuration);
         assertThat(tokenBlacklist.isTokenBlacklisted(token)).isTrue();
 
-        Thread.sleep(1100); // Sleep for slightly more than 1 second
+        Thread.sleep(1100);
 
         assertThat(tokenBlacklist.isTokenBlacklisted(token)).isFalse();
     }
 
     @Test
     void isTokenBlacklisted_beforeExpiry_returnsTrue() {
-        // Given
+
         String token = "long-lived-token";
-        long longDuration = 3600; // 1 hour
+        long longDuration = 3600;
 
         tokenBlacklist.blacklistToken(token, longDuration);
 
-        // When & Then
+
         assertThat(tokenBlacklist.isTokenBlacklisted(token)).isTrue();
     }
 
@@ -101,15 +101,15 @@ class TokenBlacklistTest {
     void sameToken_blacklistedMultipleTimes_updatesExpiry() {
         String token = "duplicate-token";
 
-        tokenBlacklist.blacklistToken(token, 1000); // 1000 seconds
-        tokenBlacklist.blacklistToken(token, 2000); // 2000 seconds (should override)
+        tokenBlacklist.blacklistToken(token, 1000);
+        tokenBlacklist.blacklistToken(token, 2000);
 
         assertThat(tokenBlacklist.isTokenBlacklisted(token)).isTrue();
     }
 
     @Test
     void removeExpiredTokens_emptyBlacklist_noErrors() {
-        // When & Then - should not throw exception
+
         assertThatNoException().isThrownBy(() -> 
             tokenBlacklist.removeExpiredTokens()
         );
@@ -117,32 +117,32 @@ class TokenBlacklistTest {
 
     @Test
     void isTokenBlacklisted_nullToken_returnsFalse() {
-        // When
+
         boolean result = tokenBlacklist.isTokenBlacklisted(null);
 
-        // Then
+
         assertThat(result).isFalse();
     }
 
     @Test
     void isTokenBlacklisted_emptyToken_returnsFalse() {
-        // When
+
         boolean result = tokenBlacklist.isTokenBlacklisted("");
 
-        // Then
+
         assertThat(result).isFalse();
     }
 
     @Test
     void blacklistToken_zeroDuration_stillBlacklists() {
-        // Given
+
         String token = "zero-duration-token";
 
-        // When
+
         tokenBlacklist.blacklistToken(token, 0);
 
-        // Then - token should be blacklisted but will expire immediately
-        // Due to timing, this might be flaky, so we just ensure no exception
+
+
         assertThatNoException().isThrownBy(() -> 
             tokenBlacklist.isTokenBlacklisted(token)
         );
@@ -150,10 +150,10 @@ class TokenBlacklistTest {
 
     @Test
     void blacklistToken_negativeDuration_handlesGracefully() {
-        // Given
+
         String token = "negative-duration-token";
 
-        // When & Then - should not throw exception
+
         assertThatNoException().isThrownBy(() -> 
             tokenBlacklist.blacklistToken(token, -1000)
         );

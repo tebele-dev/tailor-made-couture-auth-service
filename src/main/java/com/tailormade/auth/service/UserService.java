@@ -7,8 +7,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tailormade.auth.dto.ProfileUpdateRequest;
 import com.tailormade.auth.dto.UserCreateRequest;
-
 import com.tailormade.auth.model.Role;
 import com.tailormade.auth.model.User;
 import com.tailormade.auth.repository.UserRepository;
@@ -66,5 +66,46 @@ public class UserService {
         return exists;
     }
 
+    public User updateUser(String email, ProfileUpdateRequest request) {
+        logger.info("Updating user profile for email: {}", email);
+        
+        User user = getUserByEmail(email);
+        
 
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            if (!request.getEmail().equals(email) && emailExists(request.getEmail())) {
+                logger.warn("Email already taken: {}", request.getEmail());
+                throw new RuntimeException("Email is already taken!");
+            }
+            user.setEmail(request.getEmail());
+            logger.debug("Email updated to: {}", request.getEmail());
+        }
+        
+
+        if (request.getNewPassword() != null && !request.getNewPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            logger.debug("Password updated for user: {}", email);
+        }
+        
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        User updatedUser = userRepository.save(user);
+        logger.info("User profile updated successfully: {}", updatedUser.getEmail());
+        return updatedUser;
+    }
+
+    public void deleteUser(String email) {
+        logger.info("Deleting user account: {}", email);
+        User user = getUserByEmail(email);
+        userRepository.delete(user);
+        logger.info("User account deleted successfully: {}", email);
+    }
+
+    public User getUserById(String id) {
+        logger.debug("Fetching user by ID: {}", id);
+        return userRepository.findById(id)
+                .orElseThrow(() -> {
+                    logger.warn("User not found with ID: {}", id);
+                    return new RuntimeException("User not found with ID: " + id);
+                });
+    }
 }

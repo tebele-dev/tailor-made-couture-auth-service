@@ -14,14 +14,20 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tailormade.auth.dto.AuthRequest;
 import com.tailormade.auth.dto.AuthResponse;
+import com.tailormade.auth.dto.ProfileUpdateRequest;
+import com.tailormade.auth.dto.RefreshTokenRequest;
 import com.tailormade.auth.dto.UserCreateRequest;
+import com.tailormade.auth.dto.UserProfileResponse;
 import com.tailormade.auth.model.User;
 import com.tailormade.auth.service.UserService;
 import com.tailormade.auth.util.JwtUtil;
@@ -125,7 +131,7 @@ public class AuthController {
             if (loginAttemptTracker.isAccountLocked(email)) {
                 error.put("locked", "true");
                 error.put("lockoutMessage", loginAttemptTracker.getLockoutMessage(email));
-                return ResponseEntity.status(423).body(error); // 423 Locked
+                return ResponseEntity.status(423).body(error);
             }
 
             return ResponseEntity.badRequest().body(error);
@@ -224,6 +230,144 @@ public class AuthController {
         } catch (Exception e) {
             logger.warn("Could not extract expiration from token: {}", e.getMessage());
             return null;
+        }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        try {
+            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+                logger.warn("Unauthorized access to /me endpoint");
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized")); 
+            }
+
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+            logger.info("Fetching profile for user: {}", email);
+
+            User user = userService.getUserByEmail(email);
+            
+            UserProfileResponse response = new UserProfileResponse();
+            response.setId(user.getId());
+            response.setEmail(user.getEmail());
+            response.setRole(user.getRole().toString());
+            response.setEnabled(user.isEnabled());
+            response.setCreatedAt(user.getCreatedAt());
+            response.setUpdatedAt(user.getUpdatedAt());
+
+            logger.debug("Profile fetched successfully for user: {}", email);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error fetching user profile: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(@Valid @RequestBody ProfileUpdateRequest updateRequest, 
+                                              Authentication authentication) {
+        try {
+            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+                logger.warn("Unauthorized access to update profile endpoint");
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+            logger.info("Updating profile for user: {}", email);
+
+
+            if (updateRequest.getNewPassword() != null && !updateRequest.getNewPassword().isEmpty()) {
+                if (updateRequest.getCurrentPassword() == null || updateRequest.getCurrentPassword().isEmpty()) {
+                    logger.warn("Current password required for password change");
+                    return ResponseEntity.badRequest().body(Map.of("error", "Current password is required"));
+                }
+
+                try {
+                    authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(email, updateRequest.getCurrentPassword())
+                    );
+                } catch (Exception e) {
+                    logger.warn("Invalid current password for user: {}", email);
+                    return ResponseEntity.badRequest().body(Map.of("error", "Current password is incorrect"));
+                }
+            }
+
+            User updatedUser = userService.updateUser(email, updateRequest);
+            
+            UserProfileResponse response = new UserProfileResponse();
+            response.setId(updatedUser.getId());
+            response.setEmail(updatedUser.getEmail());
+            response.setRole(updatedUser.getRole().toString());
+            response.setEnabled(updatedUser.isEnabled());
+            response.setCreatedAt(updatedUser.getCreatedAt());
+            response.setUpdatedAt(updatedUser.getUpdatedAt());
+
+            logger.info("Profile updated successfully for user: {}", updatedUser.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error updating user profile: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<?> deleteCurrentUser(Authentication authentication) {
+        try {
+            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+                logger.warn("Unauthorized access to delete account endpoint");
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+            logger.info("Deleting account for user: {}", email);
+
+            userService.deleteUser(email);
+            
+
+            SecurityContextHolder.clearContext();
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Account deleted successfully");
+            logger.info("Account deleted successfully for user: {}", email);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error deleting user account: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequest refreshRequest) {
+        try {
+            String refreshToken = refreshRequest.getRefreshToken();
+            logger.info("Refresh token request received");
+
+            if (!jwtUtil.validateRefreshToken(refreshToken)) {
+                logger.warn("Invalid refresh token");
+                return ResponseEntity.status(401).body(Map.of("error", "Invalid refresh token"));
+            }
+
+            String email = jwtUtil.extractUsername(refreshToken);
+            logger.debug("Refresh token valid for user: {}", email);
+
+
+            UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername(email)
+                .password("")
+                .authorities("ROLE_" + userService.getUserByEmail(email).getRole().toString())
+                .build();
+
+
+            String newAccessToken = jwtUtil.generateToken(userDetails);
+            String newRefreshToken = jwtUtil.generateRefreshToken(userDetails);
+
+            AuthResponse response = new AuthResponse(newAccessToken, newRefreshToken, "Bearer", 
+                userDetails.getUsername(), userService.getUserByEmail(email).getRole().toString());
+
+            logger.info("Tokens refreshed successfully for user: {}", email);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error refreshing token: {}", e.getMessage(), e);
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid refresh token"));
         }
     }
 }

@@ -74,56 +74,56 @@ class LoginAttemptTrackerTest {
 
     @Test
     void isAccountLocked_nonExistentUser_returnsFalse() {
-        // When
+
         boolean locked = tracker.isAccountLocked("nonexistent@example.com");
 
-        // Then
+
         assertThat(locked).isFalse();
     }
 
     @Test
     void isAccountLocked_belowMaxAttempts_returnsFalse() {
-        // Given
+
         tracker.recordFailedAttempt("test@example.com");
         tracker.recordFailedAttempt("test@example.com");
 
-        // When
+
         boolean locked = tracker.isAccountLocked("test@example.com");
 
-        // Then
+
         assertThat(locked).isFalse();
     }
 
     @Test
     void getLockoutMessage_lockedAccount_returnsProperMessage() {
-        // Given - lock the account
+
         for (int i = 0; i < 5; i++) {
             tracker.recordFailedAttempt("test@example.com");
         }
 
-        // When
+
         String message = tracker.getLockoutMessage("test@example.com");
 
-        // Then
+
         assertThat(message).contains("Account is locked");
         assertThat(message).contains("minutes");
     }
 
     @Test
     void getLockoutMessage_nonLockedAccount_returnsGenericMessage() {
-        // When
+
         String message = tracker.getLockoutMessage("test@example.com");
 
-        // Then
+
         assertThat(message).isEqualTo("Account is temporarily locked due to multiple failed login attempts");
     }
 
     @Test
     void getRemainingAttempts_nonExistentUser_returnsMaxAttempts() {
-        // When
+
         int remaining = tracker.getRemainingAttempts("newuser@example.com");
 
-        // Then
+
         assertThat(remaining).isEqualTo(5);
     }
 
