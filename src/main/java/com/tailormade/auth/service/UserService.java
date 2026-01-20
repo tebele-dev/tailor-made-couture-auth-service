@@ -27,7 +27,6 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
 
-
     public User createUser(UserCreateRequest request) {
         logger.info("Creating user with email: {}", request.getEmail());
 
@@ -35,7 +34,6 @@ public class UserService {
             logger.warn("Email already registered: {}", request.getEmail());
             throw new RuntimeException("Email already registered");
         }
-
 
 
         User user = new User();

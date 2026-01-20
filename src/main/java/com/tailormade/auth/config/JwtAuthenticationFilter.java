@@ -47,7 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
             jwtToken = requestTokenHeader.substring(7);
-            logger.debug("Extracted JWT token: {}", jwtToken.length() > 20 ? jwtToken.substring(0, 20) + "..." : jwtToken);
+
             
             try {
                 username = jwtUtil.extractUsername(jwtToken);

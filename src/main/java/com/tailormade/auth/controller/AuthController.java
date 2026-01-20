@@ -347,7 +347,6 @@ public class AuthController {
             }
 
             String email = jwtUtil.extractUsername(refreshToken);
-            logger.debug("Refresh token valid for user: {}", email);
 
 
             UserDetails userDetails = org.springframework.security.core.userdetails.User
